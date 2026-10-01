@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CleanStock - ระบบคลังสินค้าและสั่งซื้อน้ำยา</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Visual Reports -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts Inter & Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        teal: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Kanit', 'Prompt', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Kanit', 'Prompt', sans-serif;
+            background-color: #f8fafc;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: white;
+            }
+            main {
+                padding: 0 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col justify-between shadow-xl no-print">
+        <div>
+            <!-- Logo Section -->
+            <div class="p-5 flex items-center space-x-3 border-b border-slate-800">
+                <div class="w-10 h-10 rounded-xl bg-teal-500 flex items-center justify-center text-white shadow-lg shadow-teal-500/30">
+                    <i class="fa-solid fa-pump-soap text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide text-white">CleanStock</h1>
+                    <p class="text-xs text-teal-400">ระบบคลังสินค้า & สั่งซื้อ</p>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="p-4 space-y-1.5">
+                <a href="javascript:void(0)" onclick="switchTab('dashboard')" id="nav-dashboard" class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-chart-pie text-lg w-5"></i>
+                    <span class="font-medium text-sm">แดชบอร์ดสรุปภาพรวม</span>
+                </a>
+                <a href="javascript:void(0)" onclick="switchTab('inventory')" id="nav-inventory" class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all bg-teal-600 text-white shadow-md font-medium">
+                    <i class="fa-solid fa-boxes-stacked text-lg w-5"></i>
+                    <span class="font-medium text-sm">สินค้าคงคลัง (Inventory)</span>
+                </a>
+                <a href="javascript:void(0)" onclick="switchTab('requisition')" id="nav-requisition" class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-hand-holding-hand text-lg w-5"></i>
+                    <span class="font-medium text-sm">แจ้งเบิกสินค้า</span>
+                </a>
+                <a href="javascript:void(0)" onclick="switchTab('po')" id="nav-po" class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-file-invoice-dollar text-lg w-5"></i>
+                    <span class="font-medium text-sm">คำขอสั่งซื้อ (PR)</span>
+                </a>
+                <a href="javascript:void(0)" onclick="switchTab('history')" id="nav-history" class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-clock-rotate-left text-lg w-5"></i>
+                    <span class="font-medium text-sm">ประวัติและรายงาน</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- User Profile Info -->
+        <div class="p-4 border-t border-slate-800 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-full bg-teal-600/30 text-teal-300 font-bold flex items-center justify-center border border-teal-500/30 text-sm">
+                    AD
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-200">ลัดดารัตน์ ชัยภูมิ</p>
+                    <p class="text-[10px] text-teal-400">ผู้ดูแลระบบ (Admin)</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Panel -->
+    <main class="flex-1 overflow-y-auto min-h-screen p-4 md:p-8">
+
+        <!-- Dynamic Header -->
+        <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-800 tracking-tight" id="header-page-title">จัดการสินค้าคงคลัง (Inventory)</h2>
+                <p class="text-xs text-slate-500 mt-0.5" id="header-page-subtitle">ตรวจสอบจำนวนคงเหลือ เพิ่มสินค้าใหม่ หรือรับสินค้าเข้าคลัง</p>
+            </div>
+            
+            <!-- Quick Actions Toolbar -->
+            <div class="flex items-center flex-wrap gap-2.5 no-print">
+                <button onclick="exportCSV()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-xl shadow-sm flex items-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-file-excel"></i>
+                    <span>ดาวน์โหลด CSV (Excel)</span>
+                </button>
+                <button onclick="window.print()" class="px-3.5 py-2 bg-slate-700 hover:bg-slate-800 text-white text-xs font-medium rounded-xl shadow-sm flex items-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-print"></i>
+                    <span>พิมพ์รายงาน (Print)</span>
+                </button>
+                <button onclick="openAddItemModal()" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium rounded-xl shadow-md shadow-teal-600/20 flex items-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-plus-circle"></i>
+                    <span>+ เพิ่มสินค้าใหม่</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- TAB 1: DASHBOARD OVERVIEW -->
+        <div id="tab-dashboard" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-box"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">รายการสินค้าทั้งหมด</p>
+                        <h3 class="text-2xl font-bold text-slate-800 mt-1" id="dash-stat-total">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">สินค้าควรสั่งซื้อ (ต่ำกว่า Min)</p>
+                        <h3 class="text-2xl font-bold text-amber-600 mt-1" id="dash-stat-low">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-arrow-down-to-bracket"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">รวมยอดรับเข้าทั้งหมด</p>
+                        <h3 class="text-2xl font-bold text-slate-800 mt-1" id="dash-stat-in">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-arrow-up-from-bracket"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">รวมยอดเบิกจ่ายทั้งหมด</p>
+                        <h3 class="text-2xl font-bold text-slate-800 mt-1" id="dash-stat-out">0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Chart -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                <h3 class="font-bold text-slate-800 text-base mb-4"><i class="fa-solid fa-chart-column text-teal-600 mr-2"></i>สรุปยอดการเบิกของสินค้าแต่ละรายการ</h3>
+                <div class="h-64">
+                    <canvas id="requisitionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: INVENTORY LIST (DEFAULT ACTIVE) -->
+        <div id="tab-inventory" class="tab-content space-y-6">
+            <!-- Filter Bar with Month Filter -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
+                <div class="flex items-center space-x-3 w-full sm:w-auto">
+                    <div class="relative w-full sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="search-input" onkeyup="filterInventory()" placeholder="ค้นหารหัส หรือชื่อสินค้า..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500 transition-all">
+                    </div>
+                    <select id="category-filter" onchange="filterInventory()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 focus:outline-none focus:border-teal-500">
+                        <option value="ALL">ทุกหมวดหมู่</option>
+                        <option value="น้ำยาทำความสะอาด">น้ำยาทำความสะอาด</option>
+                        <option value="น้ำยาฆ่าเชื้อ">น้ำยาฆ่าเชื้อ</option>
+                        <option value="อุปกรณ์ใช้แล้วทิ้ง">อุปกรณ์ใช้แล้วทิ้ง</option>
+                        <option value="อุปกรณ์เช็ดถู">อุปกรณ์เช็ดถู</option>
+                        <option value="อุปกรณ์ป้องกัน">อุปกรณ์ป้องกัน</option>
+                    </select>
+                </div>
+
+                <!-- Month Selector Filter -->
+                <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                    <span class="text-xs font-semibold text-slate-600 flex items-center"><i class="fa-regular fa-calendar-days text-teal-600 mr-1.5"></i>ประจำเดือน:</span>
+                    <input type="month" id="selected-month" onchange="filterByMonth()" class="px-3 py-1.5 bg-teal-50/50 border border-teal-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:border-teal-500">
+                    <button onclick="openMultiStockInModal()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-xl shadow-sm flex items-center space-x-1 transition-all ml-2">
+                        <i class="fa-solid fa-boxes-packing"></i>
+                        <span>+ รับสินค้าเข้า (Stock In)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Inventory Table -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base">รายการสินค้าคลังน้ำยาทำความสะอาด</h3>
+                        <p class="text-xs text-slate-500">ตรวจสอบจำนวนคงเหลือ เพิ่มสินค้า หรือรับเข้าสินค้าใหม่</p>
+                    </div>
+                    <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-medium" id="inventory-count-badge">0 รายการ</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+                                <th class="py-3.5 px-6">รหัส</th>
+                                <th class="py-3.5 px-6">ชื่อสินค้า</th>
+                                <th class="py-3.5 px-6">หมวดหมู่</th>
+                                <th class="py-3.5 px-6 text-center">ยอดยกมา</th>
+                                <th class="py-3.5 px-6 text-center text-emerald-600">รับเข้า (+)</th>
+                                <th class="py-3.5 px-6 text-center text-rose-600">ยอดเบิก (-)</th>
+                                <th class="py-3.5 px-6 text-center font-bold">คงเหลือ</th>
+                                <th class="py-3.5 px-6 text-center">หน่วยนับ</th>
+                                <th class="py-3.5 px-6 text-center">จุด MIN</th>
+                                <th class="py-3.5 px-6 text-center">วันที่รับล่าสุด</th>
+                                <th class="py-3.5 px-6 text-center">สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body" class="divide-y divide-slate-100 text-slate-700">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Monthly Stock In Records -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <h3 class="font-bold text-slate-800 text-sm"><i class="fa-solid fa-list-check text-teal-600 mr-2"></i>ประวัติรายการรับสินค้าเข้า (Stock In Logs)</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+                                <th class="py-3 px-6">วันที่รับสินค้า</th>
+                                <th class="py-3 px-6">รหัสสินค้า</th>
+                                <th class="py-3 px-6">ชื่อสินค้า</th>
+                                <th class="py-3 px-6 text-center">จำนวนที่รับเข้า</th>
+                                <th class="py-3 px-6">หมายเหตุ/ผู้จัดส่ง</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stock-in-history-body" class="divide-y divide-slate-100 text-slate-600">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: REQUISITION FORM -->
+        <div id="tab-requisition" class="tab-content hidden max-w-2xl mx-auto space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                <h3 class="font-bold text-slate-800 text-lg border-b border-slate-100 pb-3 mb-5">ฟอร์มแจ้งเบิกน้ำยาและอุปกรณ์</h3>
+                <form onsubmit="handleRequisition(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">ผู้ขอเบิก *</label>
+                            <input type="text" id="req-user" required value="ลัดดารัตน์ ชัยภูมิ" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">แผนก *</label>
+                            <input type="text" id="req-dept" required value="ฝ่ายแม่บ้าน / ทำความสะอาด" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">เลือกรายการสินค้า *</label>
+                        <select id="req-item-select" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500">
+                            <!-- JS dynamic select -->
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">จำนวนที่ต้องการเบิก *</label>
+                            <input type="number" id="req-qty" min="1" required placeholder="1" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 text-center focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">วันที่ต้องการใช้งาน *</label>
+                            <input type="date" id="req-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">วัตถุประสงค์การใช้งาน</label>
+                        <input type="text" id="req-note" placeholder="เช่น ทำความสะอาดห้องประชุมใหญ่ประจำสัปดาห์" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm rounded-xl shadow-md shadow-teal-600/20 transition-all mt-4">
+                        ยืนยันคำขอเบิกสินค้า
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- TAB 4: PURCHASE REQUISITION (PR) -->
+        <div id="tab-po" class="tab-content hidden max-w-2xl mx-auto space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                <h3 class="font-bold text-slate-800 text-lg border-b border-slate-100 pb-3 mb-5">สร้างคำขอสั่งซื้อสินค้า (PR)</h3>
+                <form onsubmit="handlePRSubmit(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">เลือกสินค้าที่ต้องการสั่งซื้อเพิ่ม *</label>
+                        <select id="pr-item-select" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500">
+                            <!-- JS dynamic select -->
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">จำนวนที่สั่งซื้อ *</label>
+                            <input type="number" id="pr-qty" min="1" required placeholder="0" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 text-center focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">เหตุผลในการสั่งซื้อ</label>
+                            <input type="text" id="pr-reason" placeholder="เช่น สต็อกลดลงต่ำกว่าจุดสั่งซื้อ Min" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-md shadow-indigo-600/20 transition-all">
+                        ส่งคำขออนุมัติสั่งซื้อ (PR)
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- TAB 5: TRANSACTION HISTORY -->
+        <div id="tab-history" class="tab-content hidden space-y-6">
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-bold text-slate-800 text-base">ประวัติการเบิกจ่ายและการสั่งซื้อย้อนหลัง</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+                                <th class="py-3.5 px-6">วันที่</th>
+                                <th class="py-3.5 px-6">ประเภท</th>
+                                <th class="py-3.5 px-6">รหัส</th>
+                                <th class="py-3.5 px-6">รายการสินค้า</th>
+                                <th class="py-3.5 px-6 text-center">จำนวน</th>
+                                <th class="py-3.5 px-6">ผู้ทำรายการ/แผนก</th>
+                                <th class="py-3.5 px-6">หมายเหตุ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-slate-100 text-slate-700">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ========================================== -->
+    <!-- MODAL 1: ADD NEW PRODUCT ITEM (เพิ่มสินค้าใหม่) -->
+    <!-- ========================================== -->
+    <div id="add-item-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 transform transition-all">
+            
+            <!-- Header -->
+            <div class="bg-teal-600 px-6 py-4 text-white flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-circle-plus text-lg"></i>
+                    <h3 class="font-bold text-base">เพิ่มรายการสินค้าใหม่เข้าสต็อก</h3>
+                </div>
+                <button onclick="closeAddItemModal()" class="text-white/80 hover:text-white p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Form Body -->
+            <form id="add-item-form" onsubmit="handleAddNewItem(event)" class="p-6 space-y-4">
+                
+                <!-- Row 1: Code & Category -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">รหัสสินค้า <span class="text-rose-500">*</span></label>
+                        <input type="text" id="item-code" required placeholder="CLM-001" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">หมวดหมู่สินค้า <span class="text-rose-500">*</span></label>
+                        <select id="item-category" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500">
+                            <option value="น้ำยาทำความสะอาด">น้ำยาทำความสะอาด</option>
+                            <option value="น้ำยาฆ่าเชื้อ">น้ำยาฆ่าเชื้อ</option>
+                            <option value="อุปกรณ์ใช้แล้วทิ้ง">อุปกรณ์ใช้แล้วทิ้ง</option>
+                            <option value="อุปกรณ์เช็ดถู">อุปกรณ์เช็ดถู</option>
+                            <option value="อุปกรณ์ป้องกัน">อุปกรณ์ป้องกัน</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 2: Item Name -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ชื่อรายการสินค้า <span class="text-rose-500">*</span></label>
+                    <input type="text" id="item-name" required placeholder="เช่น น้ำยาล้างจานสูตรเข้มข้น 3.8 ลิตร" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500">
+                </div>
+
+                <!-- Row 3: DATE RECEIVED (วันที่รับสินค้า) & UNIT -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-teal-50/50 p-2.5 rounded-xl border border-teal-200">
+                        <label class="block text-xs font-bold text-teal-800 mb-1">
+                            <i class="fa-regular fa-calendar-check text-teal-600 mr-1"></i>วันที่รับสินค้า <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="date" id="item-received-date" required class="w-full px-3 py-1.5 bg-white border border-teal-300 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">หน่วยนับ <span class="text-rose-500">*</span></label>
+                        <input type="text" id="item-unit" required placeholder="แกลลอน, ขวด, แพ็ค, ชิ้น" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500">
+                    </div>
+                </div>
+
+                <!-- Row 4: Min Point & Initial Stock -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">จุดสั่งซื้อขั้นต่ำ (Min)</label>
+                        <input type="number" id="item-min" min="0" value="5" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-center font-semibold focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">ยอดยกมาเริ่มต้น (รับเข้า)</label>
+                        <input type="number" id="item-initial-stock" min="0" value="0" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-center font-bold text-teal-700 focus:outline-none focus:border-teal-500">
+                    </div>
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="pt-3 flex items-center justify-end space-x-3 border-t border-slate-100">
+                    <button type="button" onclick="closeAddItemModal()" class="px-4 py-2 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium rounded-xl shadow-md shadow-teal-600/20">
+                        บันทึกเพิ่มสินค้า
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL 2: MULTI-ITEM STOCK IN (รับสินค้าเข้าหลายรายการ) -->
+    <!-- ========================================== -->
+    <div id="multi-stockin-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-100">
+            <div class="bg-indigo-600 px-6 py-4 text-white flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-boxes-packing text-lg"></i>
+                    <h3 class="font-bold text-base">บันทึกรับสินค้าเข้าคลัง (Stock In)</h3>
+                </div>
+                <button onclick="closeMultiStockInModal()" class="text-white/80 hover:text-white p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <form onsubmit="handleMultiStockInSubmit(event)" class="p-6 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-indigo-900 mb-1">วันที่รับเข้า *</label>
+                        <input type="date" id="stockin-batch-date" required class="w-full px-3 py-2 bg-indigo-50/50 border border-indigo-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">ผู้จัดส่ง / หมายเหตุ</label>
+                        <input type="text" id="stockin-batch-note" placeholder="เช่น PO-2026-001 หรือ ร้านค้าเอบีซี" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Dynamic Items Rows Container -->
+                <div class="border border-slate-200 rounded-xl p-3 bg-slate-50/50 space-y-2 max-h-60 overflow-y-auto" id="stockin-items-container">
+                    <!-- Dynamic rows inserted via JS -->
+                </div>
+
+                <button type="button" onclick="addStockInRow()" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 py-1">
+                    <i class="fa-solid fa-plus-circle"></i>
+                    <span>+ เพิ่มรายการสินค้าอีก</span>
+                </button>
+
+                <div class="pt-3 flex justify-end space-x-3 border-t border-slate-100">
+                    <button type="button" onclick="closeMultiStockInModal()" class="px-4 py-2 border border-slate-200 text-slate-600 text-xs rounded-xl">ยกเลิก</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-xl shadow-md">บันทึกรับเข้าทั้งหมด</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Banner -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-800 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center space-x-3 transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none no-print">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+        <p id="toast-message" class="text-xs font-medium">บันทึกข้อมูลเรียบร้อยแล้ว</p>
+    </div>
+
+    <script>
+        // Data Stores - Initially Started Empty (0 Items) as requested!
+        let inventory = [];
+        let stockInHistory = [];
+        let requisitionHistory = [];
+        let chartInstance = null;
+
+        // On Load Setup
+        window.onload = function() {
+            setTodayDateDefaults();
+            renderAll();
+            initChart();
+        };
+
+        function setTodayDateDefaults() {
+            const today = new Date().toISOString().split('T')[0];
+            const currentMonth = today.substring(0, 7);
+
+            if (document.getElementById('item-received-date')) document.getElementById('item-received-date').value = today;
+            if (document.getElementById('stockin-batch-date')) document.getElementById('stockin-batch-date').value = today;
+            if (document.getElementById('selected-month')) document.getElementById('selected-month').value = currentMonth;
+            if (document.getElementById('req-date')) document.getElementById('req-date').value = today;
+        }
+
+        // Tab Navigation
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('nav a').forEach(el => {
+                el.classList.remove('bg-teal-600', 'text-white', 'shadow-md');
+                el.classList.add('text-slate-400');
+            });
+
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            const activeNav = document.getElementById('nav-' + tabId);
+            if (activeNav) {
+                activeNav.classList.add('bg-teal-600', 'text-white', 'shadow-md');
+                activeNav.classList.remove('text-slate-400');
+            }
+
+            // Dynamic Page Title Update
+            const pageTitle = document.getElementById('header-page-title');
+            const pageSubtitle = document.getElementById('header-page-subtitle');
+
+            if (tabId === 'inventory') {
+                pageTitle.innerText = 'จัดการสินค้าคงคลัง (Inventory)';
+                pageSubtitle.innerText = 'ตรวจสอบจำนวนคงเหลือ เพิ่มสินค้าใหม่ หรือรับสินค้าเข้าคลัง';
+            } else if (tabId === 'dashboard') {
+                pageTitle.innerText = 'แดชบอร์ดสรุปภาพรวมระบบสต็อก';
+                pageSubtitle.innerText = 'ภาพรวมยอดสินค้า สรุปการเบิกจ่าย และสินค้าที่ต้องสั่งซื้อเพิ่ม';
+                updateChart();
+            } else if (tabId === 'requisition') {
+                pageTitle.innerText = 'แจ้งเบิกสินค้าและอุปกรณ์';
+                pageSubtitle.innerText = 'กรอกฟอร์มขอเบิกน้ำยาและอุปกรณ์สำหรับงานทำความสะอาด';
+                populateSelects();
+            } else if (tabId === 'po') {
+                pageTitle.innerText = 'คำขอสั่งซื้อสินค้า (PR)';
+                pageSubtitle.innerText = 'สร้างรายการคำขอสั่งซื้อเพิ่มเมื่อสินค้าใกล้หมดสต็อก';
+                populateSelects();
+            } else if (tabId === 'history') {
+                pageTitle.innerText = 'ประวัติและรายงานสรุป';
+                pageSubtitle.innerText = 'ตรวจสอบประวัติการรับเข้า การเบิกจ่าย และพิมพ์รายงานประจำเดือน';
+            }
+        }
+
+        // Modal Controls
+        function openAddItemModal() {
+            setTodayDateDefaults();
+            const nextCode = 'CLM-' + String(inventory.length + 1).padStart(3, '0');
+            document.getElementById('item-code').value = nextCode;
+            document.getElementById('add-item-modal').classList.remove('hidden');
+        }
+
+        function closeAddItemModal() {
+            document.getElementById('add-item-modal').classList.add('hidden');
+            document.getElementById('add-item-form').reset();
+        }
+
+        function openMultiStockInModal() {
+            if (inventory.length === 0) {
+                showToast('กรุณาเพิ่มรายการสินค้าในคลังก่อนทำรายการรับเข้า', 'error');
+                return;
+            }
+            setTodayDateDefaults();
+            const container = document.getElementById('stockin-items-container');
+            container.innerHTML = '';
+            addStockInRow();
+            document.getElementById('multi-stockin-modal').classList.remove('hidden');
+        }
+
+        function closeMultiStockInModal() {
+            document.getElementById('multi-stockin-modal').classList.add('hidden');
+        }
+
+        function addStockInRow() {
+            const container = document.getElementById('stockin-items-container');
+            const rowId = Date.now() + Math.random();
+            const options = inventory.map(item => `<option value="${item.id}">${item.code} - ${item.name} (คงเหลือ: ${item.stock} ${item.unit})</option>`).join('');
+            
+            const div = document.createElement('div');
+            div.className = 'flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200';
+            div.id = 'row-' + rowId;
+            div.innerHTML = `
+                <select class="stockin-item-id flex-1 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    ${options}
+                </select>
+                <input type="number" min="1" value="1" placeholder="จำนวน" class="stockin-qty w-20 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-center">
+                <button type="button" onclick="document.getElementById('row-${rowId}').remove()" class="text-slate-400 hover:text-rose-500 p-1">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                </button>
+            `;
+            container.appendChild(div);
+        }
+
+        // Add New Item Handler
+        function handleAddNewItem(e) {
+            e.preventDefault();
+
+            const code = document.getElementById('item-code').value.trim();
+            const category = document.getElementById('item-category').value;
+            const name = document.getElementById('item-name').value.trim();
+            const receivedDate = document.getElementById('item-received-date').value; // Date Received!
+            const unit = document.getElementById('item-unit').value.trim();
+            const min = parseInt(document.getElementById('item-min').value) || 0;
+            const initialStock = parseInt(document.getElementById('item-initial-stock').value) || 0;
+
+            if (inventory.some(i => i.code.toLowerCase() === code.toLowerCase())) {
+                showToast('รหัสสินค้านี้มีอยู่แล้วในระบบ', 'error');
+                return;
+            }
+
+            const newItem = {
+                id: Date.now(),
+                code: code,
+                name: name,
+                category: category,
+                initial: initialStock,
+                stockIn: initialStock,
+                stockOut: 0,
+                stock: initialStock,
+                unit: unit,
+                min: min,
+                lastReceived: receivedDate
+            };
+
+            inventory.push(newItem);
+
+            if (initialStock > 0) {
+                stockInHistory.unshift({
+                    date: receivedDate,
+                    code: newItem.code,
+                    name: newItem.name,
+                    qty: initialStock,
+                    note: 'ยอดยกมาเริ่มต้น'
+                });
+            }
+
+            closeAddItemModal();
+            renderAll();
+            showToast(`เพิ่มสินค้าใหม่ "${name}" พร้อมวันที่รับ ${formatDateThai(receivedDate)} เรียบร้อยแล้ว`);
+        }
+
+        // Handle Multi-Item Stock In
+        function handleMultiStockInSubmit(e) {
+            e.preventDefault();
+            const date = document.getElementById('stockin-batch-date').value;
+            const note = document.getElementById('stockin-batch-note').value || 'รับสินค้าเข้าสต็อก';
+
+            const itemSelects = document.querySelectorAll('.stockin-item-id');
+            const qtyInputs = document.querySelectorAll('.stockin-qty');
+
+            let addedCount = 0;
+
+            itemSelects.forEach((select, index) => {
+                const itemId = parseInt(select.value);
+                const qty = parseInt(qtyInputs[index].value) || 0;
+
+                if (itemId && qty > 0) {
+                    const item = inventory.find(i => i.id === itemId);
+                    if (item) {
+                        item.stockIn += qty;
+                        item.stock += qty;
+                        item.lastReceived = date;
+
+                        stockInHistory.unshift({
+                            date: date,
+                            code: item.code,
+                            name: item.name,
+                            qty: qty,
+                            note: note
+                        });
+                        addedCount++;
+                    }
+                }
+            });
+
+            closeMultiStockInModal();
+            renderAll();
+            showToast(`บันทึกรับสินค้าเข้าเรียบร้อยแล้ว (${addedCount} รายการ)`);
+        }
+
+        // Handle Requisition Submit
+        function handleRequisition(e) {
+            e.preventDefault();
+            const itemId = parseInt(document.getElementById('req-item-select').value);
+            const qty = parseInt(document.getElementById('req-qty').value);
+            const user = document.getElementById('req-user').value;
+            const dept = document.getElementById('req-dept').value;
+            const date = document.getElementById('req-date').value;
+            const note = document.getElementById('req-note').value;
+
+            const item = inventory.find(i => i.id === itemId);
+            if (!item) return;
+
+            if (item.stock < qty) {
+                showToast(`สินค้าคงเหลือไม่พอ (คงเหลือเพียง ${item.stock} ${item.unit})`, 'error');
+                return;
+            }
+
+            item.stockOut += qty;
+            item.stock -= qty;
+
+            requisitionHistory.unshift({
+                date: date,
+                type: 'เบิกจ่าย',
+                code: item.code,
+                name: item.name,
+                qty: qty,
+                user: `${user} (${dept})`,
+                note: note || 'เบิกใช้งาน'
+            });
+
+            renderAll();
+            showToast(`อนุมัติและบันทึกการเบิกเรียบร้อยแล้ว`);
+            switchTab('inventory');
+        }
+
+        // Handle Purchase Requisition (PR)
+        function handlePRSubmit(e) {
+            e.preventDefault();
+            const itemId = parseInt(document.getElementById('pr-item-select').value);
+            const qty = parseInt(document.getElementById('pr-qty').value);
+            const reason = document.getElementById('pr-reason').value;
+
+            const item = inventory.find(i => i.id === itemId);
+            if (!item) return;
+
+            requisitionHistory.unshift({
+                date: new Date().toISOString().split('T')[0],
+                type: 'คำขอซื้อ (PR)',
+                code: item.code,
+                name: item.name,
+                qty: qty,
+                user: 'ลัดดารัตน์ ชัยภูมิ',
+                note: reason || 'ขอสั่งซื้อเพิ่ม'
+            });
+
+            renderAll();
+            showToast(`ส่งคำขอสั่งซื้อ PR สินค้า ${item.name} เรียบร้อยแล้ว`);
+            switchTab('history');
+        }
+
+        // Render Functions
+        function renderAll() {
+            renderInventoryTable();
+            renderStockInHistory();
+            renderTransactionHistory();
+            updateStats();
+            populateSelects();
+            updateChart();
+        }
+
+        function renderInventoryTable(data = inventory) {
+            const tbody = document.getElementById('inventory-table-body');
+            document.getElementById('inventory-count-badge').innerText = `${data.length} รายการ`;
+
+            if (data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="11" class="text-center py-12 text-slate-400">
+                            <i class="fa-solid fa-box-open text-3xl mb-2 block"></i>
+                            ยังไม่มีรายการสินค้าในคลังสินค้า (กดปุ่ม "+ เพิ่มสินค้าใหม่" เพื่อเพิ่มรายการแรก)
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = data.map(item => {
+                const isLow = item.stock <= item.min;
+                const statusBadge = isLow 
+                    ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-600 border border-rose-200"><i class="fa-solid fa-circle text-[5px] mr-1 animate-pulse"></i> ควรสั่งซื้อ</span>`
+                    : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200"><i class="fa-solid fa-circle text-[5px] mr-1"></i> ปกติ</span>`;
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-3 px-6 font-semibold text-slate-800">${item.code}</td>
+                        <td class="py-3 px-6 font-medium text-slate-800">${item.name}</td>
+                        <td class="py-3 px-6 text-slate-500">${item.category}</td>
+                        <td class="py-3 px-6 text-center font-medium text-slate-600">${item.initial}</td>
+                        <td class="py-3 px-6 text-center font-semibold text-emerald-600">+${item.stockIn}</td>
+                        <td class="py-3 px-6 text-center font-semibold text-rose-600">-${item.stockOut}</td>
+                        <td class="py-3 px-6 text-center font-bold text-sm ${isLow ? 'text-rose-600' : 'text-slate-800'}">${item.stock}</td>
+                        <td class="py-3 px-6 text-center text-slate-500">${item.unit}</td>
+                        <td class="py-3 px-6 text-center text-slate-400">${item.min}</td>
+                        <td class="py-3 px-6 text-center text-slate-600">${formatDateThai(item.lastReceived)}</td>
+                        <td class="py-3 px-6 text-center">${statusBadge}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderStockInHistory() {
+            const tbody = document.getElementById('stock-in-history-body');
+            if (stockInHistory.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">ยังไม่มีประวัติการรับสินค้าเข้า</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = stockInHistory.map(log => `
+                <tr class="hover:bg-slate-50">
+                    <td class="py-2.5 px-6 font-medium text-slate-700">${formatDateThai(log.date)}</td>
+                    <td class="py-2.5 px-6 font-semibold text-teal-700">${log.code}</td>
+                    <td class="py-2.5 px-6 font-medium">${log.name}</td>
+                    <td class="py-2.5 px-6 text-center font-bold text-emerald-600">+${log.qty}</td>
+                    <td class="py-2.5 px-6 text-slate-500 text-xs">${log.note}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderTransactionHistory() {
+            const tbody = document.getElementById('history-table-body');
+            if (requisitionHistory.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">ยังไม่มีประวัติการทำรายการ</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = requisitionHistory.map(row => `
+                <tr class="hover:bg-slate-50">
+                    <td class="py-3 px-6">${formatDateThai(row.date)}</td>
+                    <td class="py-3 px-6 font-semibold ${row.type.includes('ซื้อ') ? 'text-indigo-600' : 'text-rose-600'}">${row.type}</td>
+                    <td class="py-3 px-6 font-mono">${row.code}</td>
+                    <td class="py-3 px-6 font-medium">${row.name}</td>
+                    <td class="py-3 px-6 text-center font-bold">${row.qty}</td>
+                    <td class="py-3 px-6 text-slate-600">${row.user}</td>
+                    <td class="py-3 px-6 text-slate-400">${row.note}</td>
+                </tr>
+            `).join('');
+        }
+
+        function filterInventory() {
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const category = document.getElementById('category-filter').value;
+
+            const filtered = inventory.filter(item => {
+                const matchSearch = item.name.toLowerCase().includes(search) || item.code.toLowerCase().includes(search);
+                const matchCat = category === 'ALL' || item.category === category;
+                return matchSearch && matchCat;
+            });
+
+            renderInventoryTable(filtered);
+        }
+
+        function filterByMonth() {
+            // Re-render based on month selection logic if needed
+            renderInventoryTable();
+        }
+
+        function updateStats() {
+            document.getElementById('dash-stat-total').innerText = inventory.length;
+            document.getElementById('dash-stat-low').innerText = inventory.filter(i => i.stock <= i.min).length;
+            document.getElementById('dash-stat-in').innerText = inventory.reduce((a, b) => a + b.stockIn, 0);
+            document.getElementById('dash-stat-out').innerText = inventory.reduce((a, b) => a + b.stockOut, 0);
+        }
+
+        function populateSelects() {
+            const reqSelect = document.getElementById('req-item-select');
+            const prSelect = document.getElementById('pr-item-select');
+
+            const options = inventory.length === 0 
+                ? `<option value="">-- ยังไม่มีรายการสินค้า --</option>`
+                : inventory.map(i => `<option value="${i.id}">${i.code} - ${i.name} (คงเหลือ: ${i.stock} ${i.unit})</option>`).join('');
+
+            if (reqSelect) reqSelect.innerHTML = options;
+            if (prSelect) prSelect.innerHTML = options;
+        }
+
+        // Chart Initialization
+        function initChart() {
+            const ctx = document.getElementById('requisitionChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'ยอดเบิกสะสม',
+                        data: [],
+                        backgroundColor: '#0d9488',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!chartInstance) return;
+            chartInstance.data.labels = inventory.map(i => i.name);
+            chartInstance.data.datasets[0].data = inventory.map(i => i.stockOut);
+            chartInstance.update();
+        }
+
+        // CSV Export
+        function exportCSV() {
+            if (inventory.length === 0) {
+                showToast('ไม่มีข้อมูลสินค้าสำหรับส่งออก CSV', 'error');
+                return;
+            }
+            let csv = '\uFEFF';
+            csv += 'รหัสสินค้า,ชื่อสินค้า,หมวดหมู่,ยอดยกมา,รับเข้า,ยอดเบิก,คงเหลือ,หน่วยนับ,จุดMin,วันที่รับล่าสุด\n';
+            inventory.forEach(i => {
+                csv += `"${i.code}","${i.name}","${i.category}",${i.initial},${i.stockIn},${i.stockOut},${i.stock},"${i.unit}",${i.min},"${i.lastReceived}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `รายงานคลังน้ำยา_CleanStock_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+
+        // Helpers
+        function formatDateThai(dateStr) {
+            if (!dateStr) return '-';
+            const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            return `${parts[2]} ${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            document.getElementById('toast-icon').className = type === 'error' ? 'fa-solid fa-circle-exclamation text-rose-400 text-base' : 'fa-solid fa-circle-check text-emerald-400 text-base';
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
